@@ -9,142 +9,152 @@
 </head>
 <body>
 <div id="app"></div>
-<canvas id="shareCanvas" style="display:none"></canvas>
 <script>
 const PINE="#1B3F2F",ALABASTER="#ECEFE8",ALOE="#71B5A2",GOJI="#B74949",TURMERIC="#D58D3C";
 const MAX=6,KEY="sh_scanner_v2",SCANS_KEY="sh_daily_scans_v1";
 const WEBHOOK="https://script.google.com/macros/s/AKfycbzBopaZGstqO0Iv8Ep_c7PMFh_Ofjeojg5SufGS6qaSpF03Uyb6xQo-NUwvTR7qXCBi/exec";
 
-const PRODUCTS=[
-  {key:"DETOX2",name:"Detox 2.0 Shot",url:"https://sohealthy.al/product/paketa-detox-2-0-shot14-shishe/",color:"#2E5C3E",emoji:"🧃",benefit:"djeg dhjamin e barkut & ul fryrjen",
-    triggers:(t,f)=>t.fat>30||t.calories>720||f.some(x=>/skuq|frit|gjalpë|krem|yndyr|bacon|salsiçe|burger|fast food|petë me djathë|lazanje/i.test(x)),
-    reason:(t)=>t.fat>30?`Vakti kishte ${t.fat}g yndyrna. Bromelina e ananasit në Detox 2.0 zbërthen yndyrnat aktivisht, turmeriku + piperi i zi ulin inflamacionin dhe speci i kuq nxit termogjenezën.`:`Vakt i rëndë (${t.calories} kcal). Detox 2.0 aktivizon tretjen, shkrin dhjamin e barkut dhe ul fryrjen falë enzimave të ananasit dhe ujit të kokosit.`},
-  {key:"FIBER",name:"FIBER+",url:"https://sohealthy.al/product/fiber/",color:"#8B6914",emoji:"🌾",benefit:"rregullon tretjen & ngop",
-    triggers:(t)=>t.fiber<3&&t.carbs>35,
-    reason:(t)=>`Fibra: ${t.fiber}g — shumë pak. Psyllium-i dhe farat e çias në FIBER+ ngadalësojnë thithjen e karbohidrateve (${t.carbs}g), rregullojnë kapsllëkun dhe të mbajnë të ngopur deri në vaktin tjetër.`},
-  {key:"GREEN",name:"Green Shot",url:"https://sohealthy.al/product/green-shot/",color:"#3A7D44",emoji:"💚",benefit:"heq fryrjen & djeg yndyrnat",
-    triggers:(t,f)=>t.sugar>20||f.some(x=>/fasule|lakër|qepë|brokoli|lulelakër|thjerrëza|sode|lëng i ëmbël|misër/i.test(x)),
-    reason:(t,f)=>t.sugar>20?`Sheqeri: ${t.sugar}g. Selinoja në Green Shot është diuretik natyral; uthulla e mollës stabilizon sheqerin dhe çaji mate nxit djegien e yndyrnave.`:`Ky vakt mund të shkaktojë fryrje. Selinoja + xhinxheri + farat e fenolit ulin gazrat dhe përmirësojnë kalimin intestinal.`},
-  {key:"G1",name:"G1 – Morning Powder",url:"https://sohealthy.al/product/g114-bustina/",color:PINE,emoji:"🌿",benefit:"efekt Ozempik natyral & ngopje",
-    triggers:(t,f)=>t.protein<18||f.some(x=>/bukë e bardhë|pasta|pica|makarona|petë|orizë|patate të skuqura|kek|ëmbëlsir|biskot/i.test(x)),
-    reason:(t)=>t.protein<18?`Proteina: vetëm ${t.protein}g. Glukomanani + inulini në G1 stimulojnë hormonin GLP-1 ("Ozempik natyral") — rrit ngopjen, ul oreksin dhe stabilizon sheqerin pa ilaçe.`:`Karbohidrate të rafinuara të larta. G1 me glucomanan dhe inulin ngadalëson zbrazjen gastrike dhe rrit hormonin e ngopjes GLP-1.`},
-  {key:"BERRY",name:"Berry Bliss Shot",url:"https://sohealthy.al/product/berry-bliss/",color:GOJI,emoji:"🫐",benefit:"stabilizon sheqerin & pastron mëlçinë",
-    triggers:(t)=>t.sugar>15&&t.fat>15,
-    reason:()=>`Kombinim i sheqerit dhe yndyrës së lartë ngarkon mëlçinë. Goji Berry pastron mëlçinë, stabilizon sheqerin, rrit kolagjenin dhe mbron masën muskulare.`},
-  {key:"DETOX",name:"Detox Shot",url:"https://sohealthy.al/product/detox-shot/",color:"#1B5E35",emoji:"🍋",benefit:"nxit metabolizmin & heq urinën",
-    triggers:(t)=>t.fat>20||t.calories>500,
-    reason:(t)=>`Vakt me ${t.calories} kcal. Turmeriku + xhinxheri + uthulla e mollës në Detox Shot nxitin metabolizmin, heqin ujin e tepërt dhe djeg yndyrnat.`},
-  {key:"BROK",name:"Brok Shot",url:"https://sohealthy.al/product/brok-shot/",color:"#1A5C2A",emoji:"🥦",benefit:"rregullon estrogjënin & forcon imunitetin",
-    triggers:(t,f)=>f.some(x=>/mish i kuq|hamburger|suxhuk|salsiçe|proshutë|kofshë|biftek|kebab/i.test(x)),
-    reason:()=>`Sulforafani nga filisat e brokolit rregullon metabolizmin e estrogjenit, ul inflamacionin dhe forcon imunitetin — veçanërisht i rëndësishëm për femrat.`},
-  {key:"METABOLIC",name:"Metabolic Shot",url:"https://sohealthy.al/product/metabolic-shot/",color:TURMERIC,emoji:"⚡",benefit:"nxit metabolizmin & rrit energjinë",
-    triggers:(t)=>t.calories<280,
-    reason:(t)=>`Vakt shumë i lehtë: ${t.calories} kcal. Qitroja + piperi i zi + çaji mate rrisin termogjenezën, japin energji të qëndrueshme dhe rregullojnë tretjen.`},
-  {key:"ALOE",name:"Aloe Shot",url:"https://sohealthy.al/product/aloe-shot/",color:ALOE,emoji:"🌱",benefit:"qetëson zorrët & pastron lëkurën",
-    triggers:(t,f)=>t.fiber<4||f.some(x=>/pikant|spec|curry|salcë e nxehtë/i.test(x)),
-    reason:(t)=>`Fibra e ulët (${t.fiber}g). Aloe vera qetëson mukozën e zorrëve, rregullon florën intestinale dhe pastron lëkurën.`},
-  {key:"REDS",name:"Paketa Reds",url:"https://sohealthy.al/product/greens-organic/",color:"#8B2020",emoji:"🍇",benefit:"zëvendëso darkën & humb deri 4kg/10 ditë",
-    triggers:(t)=>t.calories>580&&new Date().getHours()>=17,
-    reason:(t)=>`Darkë me ${t.calories} kcal — shumë për mbrëmje. Reds (brokoli, boronica, açai, quinoa, moringa) zëvendëson vaktin e darkës duke ndihmuar të humbasësh deri 4kg në 10 ditë pa uri.`}
+// ── AUTO PLATE RATING ────────────────────────────────────────────────────
+function ratePlate(t, items) {
+  const foods = items.map(i=>i.name.toLowerCase());
+  let score = 100;
+  let issues = [];
+  let positives = [];
+
+  // Deductions
+  if(t.sugar > 25){ score -= 25; issues.push(`sheqer i lartë (${t.sugar}g)`); }
+  else if(t.sugar > 15){ score -= 12; issues.push(`sheqer mesatar (${t.sugar}g)`); }
+
+  if(t.fat > 35){ score -= 20; issues.push(`yndyrna të larta (${t.fat}g)`); }
+  else if(t.fat > 25){ score -= 10; issues.push(`yndyrna mesatare (${t.fat}g)`); }
+
+  if(t.fiber < 2){ score -= 20; issues.push(`fibra shumë e ulët (${t.fiber}g)`); }
+  else if(t.fiber < 4){ score -= 10; issues.push(`fibra e ulët (${t.fiber}g)`); }
+
+  if(t.protein < 10){ score -= 20; issues.push(`proteina shumë të ulëta (${t.protein}g)`); }
+  else if(t.protein < 18){ score -= 10; issues.push(`proteina të ulëta (${t.protein}g)`); }
+
+  if(t.calories > 800){ score -= 15; issues.push(`kalori shumë të larta (${t.calories})`); }
+  else if(t.calories > 600){ score -= 5; issues.push(`kalori relativisht të larta`); }
+
+  if(foods.some(x=>/skuq|frit|bacon|salsiçe|suxhuk|fast food|burger/i.test(x))){ score -= 15; issues.push("ushqime të skuqura/të përpunuara"); }
+
+  // Bonuses
+  if(t.protein >= 25){ score += 5; positives.push(`proteina të mira (${t.protein}g)`); }
+  if(t.fiber >= 6){ score += 5; positives.push(`fibra e mirë (${t.fiber}g)`); }
+  if(foods.some(x=>/perime|sallatë|spinaq|brokoli|lakër|domate|kastravec|karrotë/i.test(x))){ score += 5; positives.push("përmban perime"); }
+  if(t.calories >= 300 && t.calories <= 550){ score += 5; positives.push("kalori të ekuilibruara"); }
+
+  score = Math.max(0, Math.min(100, score));
+
+  let label, emoji, color, description;
+  if(score >= 75){
+    label="E Shëndetshme"; emoji="✅"; color=ALOE;
+    description = positives.length > 0
+      ? `Vakt i ekuilibruar. ${positives.join(", ")}.`
+      : "Vakt i ekuilibruar me makro të mira.";
+  } else if(score >= 45){
+    label="Mesatare"; emoji="⚡"; color=TURMERIC;
+    description = issues.length > 0
+      ? `Ka hapësirë për përmirësim: ${issues.slice(0,2).join(", ")}.`
+      : "Vakt me disa çekuilibra.";
+  } else {
+    label="Duhet Përmirësuar"; emoji="⚠️"; color=GOJI;
+    description = issues.length > 0
+      ? `Probleme kryesore: ${issues.slice(0,3).join(", ")}.`
+      : "Ky vakt ka çekuilibra të rëndësishme.";
+  }
+
+  return { score, label, emoji, color, description };
+}
+
+// ── PRODUCT DATABASE (ingredient-based logic) ────────────────────────────
+const PRODUCTS = [
+  {
+    key:"DETOX2", name:"Detox 2.0 Shot",
+    url:"https://sohealthy.al/product/paketa-detox-2-0-shot14-shishe/",
+    color:"#2E5C3E", emoji:"🧃", benefit:"djeg dhjamin e barkut & ul fryrjen",
+    triggers:(t,f)=> t.fat>30 || t.calories>720 || f.some(x=>/skuq|frit|gjalpë|krem|yndyr|bacon|salsiçe|burger|fast food|petë me djathë|lazanje/i.test(x)),
+    reason:(t)=> t.fat>30
+      ? `Vakti kishte ${t.fat}g yndyrna. Bromelina e ananasit në Detox 2.0 zbërthen yndyrnat aktivisht, turmeriku + piperi i zi ulin inflamacionin dhe speci i kuq nxit termogjenezën — formula jonë më e fuqishme për vakte të rënda.`
+      : `Vakt i rëndë (${t.calories} kcal). Detox 2.0 aktivizon tretjen, shkrin dhjamin e barkut dhe ul ndjeshëm fryrjen falë enzimave të ananasit dhe ujit të kokosit.`
+  },
+  {
+    key:"FIBER", name:"FIBER+",
+    url:"https://sohealthy.al/product/fiber/",
+    color:"#8B6914", emoji:"🌾", benefit:"rregullon tretjen & ngop",
+    triggers:(t)=> t.fiber<3 && t.carbs>35,
+    reason:(t)=> `Fibra: ${t.fiber}g — shumë pak. Psyllium-i dhe farat e çias në FIBER+ formojnë xhel në zorrë që ngadalëson thithjen e karbohidrateve (${t.carbs}g), rregullon kapsllëkun dhe të mban të ngopur deri në vaktin tjetër.`
+  },
+  {
+    key:"GREEN", name:"Green Shot",
+    url:"https://sohealthy.al/product/green-shot/",
+    color:"#3A7D44", emoji:"💚", benefit:"heq fryrjen & djeg yndyrnat",
+    triggers:(t,f)=> t.sugar>20 || f.some(x=>/fasule|lakër|qepë|lulelakër|thjerrëza|sode|lëng i ëmbël|misër/i.test(x)),
+    reason:(t,f)=> t.sugar>20
+      ? `Sheqeri: ${t.sugar}g. Selinoja në Green Shot është diuretik natyral; uthulla e mollës stabilizon sheqerin dhe çaji mate nxit djegien e yndyrnave.`
+      : `Ky vakt mund të shkaktojë fryrje. Selinoja + xhinxheri + farat e fenolit ulin gazrat dhe përmirësojnë kalimin intestinal.`
+  },
+  {
+    key:"G1", name:"G1 – Morning Powder",
+    url:"https://sohealthy.al/product/g114-bustina/",
+    color:PINE, emoji:"🌿", benefit:"efekt Ozempik natyral & ngopje",
+    triggers:(t,f)=> t.protein<18 || f.some(x=>/bukë e bardhë|pasta|pica|makarona|petë|orizë|kek|ëmbëlsir|biskot/i.test(x)),
+    reason:(t)=> t.protein<18
+      ? `Proteina: vetëm ${t.protein}g. Glukomanani + inulini në G1 stimulojnë hormonin GLP-1 (efekt Ozempik natyral) — rrit ngopjen, ul oreksin dhe stabilizon sheqerin pa ilaçe.`
+      : `Karbohidrate të rafinuara. G1 me glucomanan + inulin ngadalëson zbrazjen gastrike dhe rrit hormonin e ngopjes GLP-1.`
+  },
+  {
+    key:"BERRY", name:"Berry Bliss Shot",
+    url:"https://sohealthy.al/product/berry-bliss/",
+    color:GOJI, emoji:"🫐", benefit:"stabilizon sheqerin & pastron mëlçinë",
+    triggers:(t)=> t.sugar>15 && t.fat>15,
+    reason:()=> `Kombinim i sheqerit dhe yndyrës së lartë ngarkon mëlçinë. Goji Berry pastron mëlçinë, stabilizon sheqerin në gjak, rrit kolagjenin dhe mbron masën muskulare.`
+  },
+  {
+    key:"DETOX", name:"Detox Shot",
+    url:"https://sohealthy.al/product/detox-shot/",
+    color:"#1B5E35", emoji:"🍋", benefit:"nxit metabolizmin & heq urinën",
+    triggers:(t)=> t.fat>20 || t.calories>500,
+    reason:(t)=> `Vakt me ${t.calories} kcal. Turmeriku + xhinxheri + uthulla e mollës në Detox Shot nxitin metabolizmin, heqin ujin e tepërt dhe djegin yndyrnat.`
+  },
+  {
+    key:"BROK", name:"Brok Shot",
+    url:"https://sohealthy.al/product/brok-shot/",
+    color:"#1A5C2A", emoji:"🥦", benefit:"rregullon estrogjënin & forcon imunitetin",
+    triggers:(t,f)=> f.some(x=>/mish i kuq|hamburger|suxhuk|salsiçe|proshutë|kofshë|biftek|kebab/i.test(x)),
+    reason:()=> `Mishi i kuq/i përpunuar ndikon negativisht në ekuilibrin hormonal. Sulforafani nga filisat e brokolit rregullon metabolizmin e estrogjenit, ul inflamacionin dhe forcon imunitetin.`
+  },
+  {
+    key:"METABOLIC", name:"Metabolic Shot",
+    url:"https://sohealthy.al/product/metabolic-shot/",
+    color:TURMERIC, emoji:"⚡", benefit:"nxit metabolizmin & rrit energjinë",
+    triggers:(t)=> t.calories<280,
+    reason:(t)=> `Vakt shumë i lehtë: ${t.calories} kcal. Qitroja + piperi i zi + çaji mate në Metabolic Shot rrisin termogjenezën, japin energji të qëndrueshme dhe rregullojnë tretjen.`
+  },
+  {
+    key:"ALOE", name:"Aloe Shot",
+    url:"https://sohealthy.al/product/aloe-shot/",
+    color:ALOE, emoji:"🌱", benefit:"qetëson zorrët & pastron lëkurën",
+    triggers:(t,f)=> t.fiber<4 || f.some(x=>/pikant|spec|curry|salcë e nxehtë|turshi/i.test(x)),
+    reason:(t)=> `Fibra e ulët (${t.fiber}g). Aloe vera qetëson mukozën e zorrëve, rregullon florën intestinale, pastron lëkurën dhe jep vitamina B12 + C.`
+  },
+  {
+    key:"REDS", name:"Paketa Reds",
+    url:"https://sohealthy.al/product/greens-organic/",
+    color:"#8B2020", emoji:"🍇", benefit:"zëvendëso darkën & humb deri 4kg/10 ditë",
+    triggers:(t)=> t.calories>580 && new Date().getHours()>=17,
+    reason:(t)=> `Darkë me ${t.calories} kcal — shumë për mbrëmje. Reds (brokoli, boronica, açai, quinoa, moringa) zëvendëson vaktin e darkës me vlera të plota ushqyese duke ndihmuar të humbasësh deri 4kg në 10 ditë.`
+  }
 ];
 
-function getProductRec(total,items){
+function getProductRec(total, items){
   const foods=items.map(i=>i.name.toLowerCase());
-  for(const p of PRODUCTS){if(p.triggers(total,foods))return{...p,reasonText:p.reason(total,foods)};}
+  for(const p of PRODUCTS){
+    if(p.triggers(total,foods)) return {...p, reasonText:p.reason(total,foods)};
+  }
   return null;
 }
-
-// ── SHARE: generate image for Instagram Stories ───────────────────────────
-function generateShareImage(result){
-  const canvas=document.getElementById("shareCanvas");
-  const W=1080,H=1920;
-  canvas.width=W;canvas.height=H;
-  const ctx=canvas.getContext("2d");
-  const t=result.total;
-
-  // Background
-  ctx.fillStyle=PINE;ctx.fillRect(0,0,W,H);
-
-  // Top accent
-  ctx.fillStyle=ALOE;ctx.fillRect(0,0,W,8);
-
-  // Brand
-  ctx.fillStyle=ALOE;ctx.font="bold 48px sans-serif";ctx.textAlign="center";
-  ctx.letterSpacing="12px";ctx.fillText("SOHEALTHY",W/2,160);
-
-  ctx.fillStyle="white";ctx.font="bold 80px sans-serif";
-  ctx.fillText("Skano Pjatën",W/2,280);
-
-  // Big calorie number
-  ctx.fillStyle="white";ctx.font="bold 220px sans-serif";
-  ctx.fillText(t.calories,W/2,580);
-  ctx.fillStyle=ALOE;ctx.font="bold 60px sans-serif";
-  ctx.fillText("kcal",W/2,660);
-
-  // Macro cards
-  const macros=[["Proteina",t.protein+"g"],["Karbohidrate",t.carbs+"g"],["Yndyrna",t.fat+"g"],["Fibra",t.fiber+"g"],["Sheqeri",t.sugar+"g"]];
-  const cardW=440,cardH=160,gap=40;
-  const startX=(W-(cardW*2+gap))/2;
-  macros.forEach((m,i)=>{
-    const col=i%2,row=Math.floor(i/2);
-    const x=startX+col*(cardW+gap);
-    const y=760+row*(cardH+gap);
-    ctx.fillStyle="rgba(255,255,255,0.12)";
-    roundRect(ctx,x,y,cardW,cardH,20);ctx.fill();
-    ctx.fillStyle=ALOE;ctx.font="32px sans-serif";ctx.textAlign="center";
-    ctx.fillText(m[0],x+cardW/2,y+55);
-    ctx.fillStyle="white";ctx.font="bold 60px sans-serif";
-    ctx.fillText(m[1],x+cardW/2,y+125);
-  });
-
-  // Foods
-  ctx.fillStyle="rgba(255,255,255,0.7)";ctx.font="38px sans-serif";ctx.textAlign="center";
-  const foodNames=result.items.map(i=>i.name).join(" · ");
-  ctx.fillText(foodNames.length>40?foodNames.slice(0,40)+"…":foodNames,W/2,1380);
-
-  // Footer
-  ctx.fillStyle=ALOE;ctx.font="bold 42px sans-serif";
-  ctx.fillText("scanner.sohealthy.al",W/2,1780);
-  ctx.fillStyle="rgba(255,255,255,0.4)";ctx.font="34px sans-serif";
-  ctx.fillText("Jo magji. Biologji.",W/2,1860);
-
-  return canvas.toDataURL("image/png");
-}
-
-function roundRect(ctx,x,y,w,h,r){
-  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
-  ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);
-  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
-  ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);
-  ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
-}
-
-async function shareInstagram(result){
-  try{
-    const dataUrl=generateShareImage(result);
-    const blob=await(await fetch(dataUrl)).blob();
-    const file=new File([blob],"sohealthy-scan.png",{type:"image/png"});
-    if(navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title:"SoHealthy Scanner"});
-    } else {
-      // fallback: download the image
-      const a=document.createElement("a");a.href=dataUrl;a.download="sohealthy-scan.png";a.click();
-      alert("Foto u shkarkua! Hape në galeri dhe ndaje në Instagram Stories.");
-    }
-  }catch(e){
-    if(e.name!=="AbortError"){
-      const dataUrl=generateShareImage(result);
-      const a=document.createElement("a");a.href=dataUrl;a.download="sohealthy-scan.png";a.click();
-    }
-  }
-}
-
-async function shareWhatsApp(result){
-  const t=result.total;
-  const text=`🍽️ Skanova pjatën time me SoHealthy!\n\n📊 Kalori: ${t.calories} kcal\n💪 Proteina: ${t.protein}g\n🍞 Karbohidrate: ${t.carbs}g\n🫒 Yndyrna: ${t.fat}g\n\nProvo edhe ti 👇\nscanner.sohealthy.al`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`,"_blank");
-}
-// ─────────────────────────────────────────────────────────────────────────
 
 function today(){return new Date().toISOString().slice(0,10);}
 function getCount(){try{const r=JSON.parse(localStorage.getItem(KEY)||"{}");return r.date===today()?r.count||0:0;}catch{return 0;}}
@@ -153,8 +163,12 @@ function saveScanData(t){
   try{const raw=JSON.parse(localStorage.getItem(SCANS_KEY)||"{}");const scans=raw.date===today()?raw.scans||[]:[];scans.push(t);localStorage.setItem(SCANS_KEY,JSON.stringify({date:today(),scans}));}catch{}
 }
 function getDailyTotals(){
-  try{const raw=JSON.parse(localStorage.getItem(SCANS_KEY)||"{}");if(raw.date!==today())return null;const scans=raw.scans||[];if(!scans.length)return null;
-  return scans.reduce((a,s)=>({calories:a.calories+(s.calories||0),protein:a.protein+(s.protein||0),carbs:a.carbs+(s.carbs||0),fat:a.fat+(s.fat||0),fiber:a.fiber+(s.fiber||0),sugar:a.sugar+(s.sugar||0),count:a.count+1}),{calories:0,protein:0,carbs:0,fat:0,fiber:0,sugar:0,count:0});}catch{return null;}
+  try{
+    const raw=JSON.parse(localStorage.getItem(SCANS_KEY)||"{}");
+    if(raw.date!==today())return null;
+    const scans=raw.scans||[];if(!scans.length)return null;
+    return scans.reduce((a,s)=>({calories:a.calories+(s.calories||0),protein:a.protein+(s.protein||0),carbs:a.carbs+(s.carbs||0),fat:a.fat+(s.fat||0),fiber:a.fiber+(s.fiber||0),sugar:a.sugar+(s.sugar||0),count:a.count+1}),{calories:0,protein:0,carbs:0,fat:0,fiber:0,sugar:0,count:0});
+  }catch{return null;}
 }
 async function logSheet(res,rt){
   const n=new Date();
@@ -166,7 +180,7 @@ async function analyzeImage(b64,mime){
   const d=await r.json();if(d.error)throw new Error(d.error);return d;
 }
 
-let state="home",imgFile=null,result=null,errMsg=null,rating=null;
+let state="home",imgFile=null,result=null,errMsg=null;
 
 function render(){
   const left=MAX-getCount();const daily=getDailyTotals();
@@ -185,25 +199,38 @@ function render(){
     html+=`<div style="text-align:center;padding:60px 24px;"><div style="font-size:48px;margin-bottom:20px;">🔍</div><p style="color:${PINE};font-weight:700;font-size:16px;margin:0 0 8px;">Duke analizuar...</p><p style="color:#888;font-size:13px;font-family:'Open Sans',sans-serif;">Sistemi po identifikon ushqimet dhe llogarit makrot</p></div>`;
   }
   else if(state==="result"&&result){
-    const t=result.total;const daily2=getDailyTotals();const rec=getProductRec(t,result.items);
+    const t=result.total;
+    const daily2=getDailyTotals();
+    const rec=getProductRec(t,result.items);
+    const plate=ratePlate(t,result.items);
     const macros=[["Proteina",t.protein],["Karbohidrate",t.carbs],["Yndyrna",t.fat],["Fibra",t.fiber],["Sheqeri",t.sugar]];
+
+    // Macro totals
     html+=`<div style="background:${PINE};border-radius:16px;padding:20px;margin-bottom:16px;color:white;"><div style="font-size:11px;letter-spacing:2px;color:${ALOE};margin-bottom:12px;font-weight:700;">KY VAKT</div><div style="font-size:40px;font-weight:700;margin-bottom:4px;">${t.calories} <span style="font-size:18px;font-weight:400;">kcal</span></div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px;">${macros.map(([l,v])=>`<div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;"><div style="font-size:11px;color:${ALOE};margin-bottom:2px;">${l}</div><div style="font-size:18px;font-weight:600;">${v}<span style="font-size:12px;font-weight:400;">g</span></div></div>`).join("")}</div></div>`;
-    if(daily2&&daily2.count>0){html+=`<div style="background:${TURMERIC}20;border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1px solid ${TURMERIC}40;"><div style="font-size:11px;letter-spacing:2px;color:${TURMERIC};font-weight:700;margin-bottom:8px;">TOTALI DITOR – ${daily2.count} VAKTE</div><div style="display:flex;justify-content:space-between;align-items:center;"><div style="font-size:26px;font-weight:700;color:${PINE};">${daily2.calories} <span style="font-size:13px;font-weight:400;color:#666;">kcal sot</span></div><div style="display:flex;gap:6px;"><span style="font-size:11px;background:white;border-radius:4px;padding:3px 8px;color:${PINE};">P:${daily2.protein}g</span><span style="font-size:11px;background:white;border-radius:4px;padding:3px 8px;color:${PINE};">K:${daily2.carbs}g</span><span style="font-size:11px;background:white;border-radius:4px;padding:3px 8px;color:${PINE};">Y:${daily2.fat}g</span></div></div></div>`;}
 
-    // 1-10 RATING
-    const nums=[1,2,3,4,5,6,7,8,9,10];
-    html+=`<div style="background:white;border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid rgba(27,63,47,0.08);"><div style="font-size:12px;color:#888;font-family:'Open Sans',sans-serif;margin-bottom:4px;">Vlerëso vaktin (1–10)</div><div style="font-size:10px;color:#bbb;margin-bottom:12px;font-family:'Open Sans',sans-serif;">1 = shumë keq &nbsp;·&nbsp; 10 = perfekt</div><div style="display:flex;gap:6px;flex-wrap:wrap;">${nums.map(n=>{const sel=rating===n;const col=n<=3?GOJI:n<=6?TURMERIC:ALOE;return`<button onclick="setRating(${n})" style="width:44px;height:44px;border-radius:50%;border:2px solid ${sel?col:'rgba(27,63,47,0.15)'};background:${sel?col:'white'};color:${sel?'white':PINE};font-size:15px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;">${n}</button>`;}).join("")}</div></div>`;
+    // Auto plate rating
+    html+=`<div style="background:white;border-radius:12px;padding:16px;margin-bottom:16px;border:1.5px solid ${plate.color}40;">
+      <div style="font-size:10px;letter-spacing:2px;color:#888;font-weight:700;margin-bottom:12px;">VLERËSIMI I PJATËS</div>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div style="width:56px;height:56px;border-radius:50%;background:${plate.color}20;border:2px solid ${plate.color};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">${plate.emoji}</div>
+        <div style="flex:1;">
+          <div style="color:${plate.color};font-weight:700;font-size:16px;margin-bottom:4px;">${plate.label}</div>
+          <div style="background:#f0f0f0;border-radius:20px;height:6px;overflow:hidden;margin-bottom:6px;"><div style="background:${plate.color};height:100%;width:${plate.score}%;border-radius:20px;transition:width 0.5s;"></div></div>
+          <div style="color:#888;font-size:12px;font-family:'Open Sans',sans-serif;line-height:1.5;">${plate.description}</div>
+        </div>
+      </div>
+    </div>`;
 
+    // Daily total
+    if(daily2&&daily2.count>0){html+=`<div style="background:${TURMERIC}20;border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1px solid ${TURMERIC}40;"><div style="font-size:11px;letter-spacing:2px;color:${TURMERIC};font-weight:700;margin-bottom:8px;">TOTALI DITOR – ${daily2.count} VAKTE</div><div style="display:flex;justify-content:space-between;align-items:center;"><div style="font-size:26px;font-weight:700;color:${PINE};">${daily2.calories} <span style="font-size:13px;font-weight:400;color:#666;">kcal sot</span></div><div style="display:flex;gap:6px;flex-wrap:wrap;"><span style="font-size:11px;background:white;border-radius:4px;padding:3px 8px;color:${PINE};">P:${daily2.protein}g</span><span style="font-size:11px;background:white;border-radius:4px;padding:3px 8px;color:${PINE};">K:${daily2.carbs}g</span><span style="font-size:11px;background:white;border-radius:4px;padding:3px 8px;color:${PINE};">Y:${daily2.fat}g</span></div></div></div>`;}
+
+    // Product recommendation
     if(rec){html+=`<div style="background:white;border-radius:12px;padding:16px;margin-bottom:16px;border:1.5px solid ${rec.color}40;"><div style="font-size:10px;letter-spacing:2px;color:#888;font-weight:700;margin-bottom:10px;">REKOMANDIM BAZUAR NË ANALIZËN TUAJ</div><div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;"><div style="width:44px;height:44px;background:${rec.color}15;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">${rec.emoji}</div><div><div style="color:${PINE};font-weight:700;font-size:14px;margin-bottom:2px;">${rec.name}</div><div style="color:${rec.color};font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">${rec.benefit}</div></div></div><p style="color:#555;font-size:12px;font-family:'Open Sans',sans-serif;line-height:1.6;margin-bottom:12px;">${rec.reasonText}</p><a href="${rec.url}" target="_blank" style="display:block;text-align:center;background:${rec.color};color:white;padding:11px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;font-family:'Montserrat',sans-serif;">Porosit Tani →</a></div>`;}
 
-    html+=`<div style="font-size:11px;letter-spacing:2px;color:#888;font-weight:700;margin-bottom:10px;">USHQIMET E DETEKTUARA</div>${result.items.map(item=>`<div style="background:white;border-radius:12px;padding:14px 16px;margin-bottom:10px;border:1px solid rgba(27,63,47,0.08);"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;"><div><div style="color:${PINE};font-weight:700;font-size:14px;">${item.name}</div><div style="color:#888;font-size:12px;font-family:'Open Sans',sans-serif;">${item.portion}</div></div><div style="background:${PINE}20;color:${PINE};padding:4px 10px;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap;">${item.calories} kcal</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;">${[["P",item.protein],["K",item.carbs],["Y",item.fat],["F",item.fiber],["Sh",item.sugar]].map(([l,v])=>`<span style="font-size:11px;background:${ALABASTER};border-radius:4px;padding:3px 8px;color:${PINE};">${l}: ${v}g</span>`).join("")}</div></div>`).join("")}
+    // Per food breakdown
+    html+=`<div style="font-size:11px;letter-spacing:2px;color:#888;font-weight:700;margin-bottom:10px;">USHQIMET E DETEKTUARA</div>${result.items.map(item=>`<div style="background:white;border-radius:12px;padding:14px 16px;margin-bottom:10px;border:1px solid rgba(27,63,47,0.08);"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;"><div><div style="color:${PINE};font-weight:700;font-size:14px;">${item.name}</div><div style="color:#888;font-size:12px;font-family:'Open Sans',sans-serif;">${item.portion}</div></div><div style="background:${PINE}20;color:${PINE};padding:4px 10px;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap;">${item.calories} kcal</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;">${[["P",item.protein],["K",item.carbs],["Y",item.fat],["F",item.fiber],["Sh",item.sugar]].map(([l,v])=>`<span style="font-size:11px;background:${ALABASTER};border-radius:4px;padding:3px 8px;color:${PINE};">${l}: ${v}g</span>`).join("")}</div></div>`).join("")}`;
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;">
-      <button onclick="shareInstagram(currentResult)" style="background:#E1306C;color:white;border:none;padding:14px 8px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;">📸 Instagram</button>
-      <button onclick="shareWhatsApp(currentResult)" style="background:#25D366;color:white;border:none;padding:14px 8px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;">💬 WhatsApp</button>
-    </div>
-    <button onclick="goHome()" style="background:${PINE};color:${ALABASTER};border:none;padding:14px 20px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;width:100%;margin-top:10px;">+ Skano Pjatë Tjetër</button>
-    <div style="text-align:center;color:#888;font-size:12px;margin-top:12px;font-family:'Open Sans',sans-serif;">${MAX-getCount()} skane të mbetura sot</div>`;
+    html+=`<button onclick="goHome()" style="background:${PINE};color:${ALABASTER};border:none;padding:14px 20px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;width:100%;margin-top:8px;">+ Skano Pjatë Tjetër</button><div style="text-align:center;color:#888;font-size:12px;margin-top:12px;font-family:'Open Sans',sans-serif;">${MAX-getCount()} skane të mbetura sot</div>`;
   }
   else if(state==="limit"){
     const d3=getDailyTotals();
@@ -216,23 +243,20 @@ function render(){
   document.getElementById("gal")?.addEventListener("change",e=>handleFile(e.target.files[0]));
 }
 
-let currentResult=null;
 function handleFile(f){if(!f)return;imgFile=f;state="ready";errMsg=null;render();}
-function goHome(){state="home";imgFile=null;result=null;currentResult=null;errMsg=null;rating=null;render();}
-function setRating(r){rating=r;logSheet(result,r);render();}
+function goHome(){state="home";imgFile=null;result=null;errMsg=null;render();}
 async function doScan(){
   if(getCount()>=MAX){state="limit";render();return;}
   state="loading";render();
   try{
     const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=()=>rej();r.readAsDataURL(imgFile);});
     result=await analyzeImage(b64,imgFile.type||"image/jpeg");
-    currentResult=result;
-    bump();saveScanData(result.total);await logSheet(result,"");state="result";
+    const plate=ratePlate(result.total,result.items);
+    bump();saveScanData(result.total);await logSheet(result,plate.label);state="result";
   }catch(e){errMsg="Gabim gjatë analizës. Provo përsëri.";state="ready";}
   render();
 }
-window.doScan=doScan;window.goHome=goHome;window.setRating=setRating;
-window.shareInstagram=shareInstagram;window.shareWhatsApp=shareWhatsApp;
+window.doScan=doScan;window.goHome=goHome;
 render();
 </script>
 </body>
