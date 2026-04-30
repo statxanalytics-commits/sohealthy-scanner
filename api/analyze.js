@@ -18,7 +18,7 @@ export default async function handler(req, res) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-opus-4-5",
         max_tokens: 1000,
         system: `You are a professional nutritionist. Analyze the food image and return ONLY valid JSON, no markdown, no explanation, no backticks:
 {"total":{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0},"items":[{"name":"Emri shqip","portion":"Xg","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0}]}
