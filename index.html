@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Skano Pjatën – SoHealthy</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Montserrat',sans-serif;background:#ECEFE8;min-height:100vh;}
+    #app{max-width:420px;margin:0 auto;}
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const PINE="#1B3F2F",ALABASTER="#ECEFE8",ALOE="#71B5A2",GOJI="#B74949";
+const MAX=10,KEY="sh_scanner_v1";
+const WEBHOOK="https://script.google.com/macros/s/AKfycbzBopaZGstqO0Iv8Ep_c7PMFh_Ofjeojg5SufGS6qaSpF03Uyb6xQo-NUwvTR7qXCBi/exec";
+
+function today(){return new Date().toISOString().slice(0,10);}
+function getCount(){
+  try{const r=JSON.parse(localStorage.getItem(KEY)||"{}");return r.date===today()?r.count||0:0;}
+  catch{return 0;}
+}
+function bump(){
+  const c=getCount()+1;
+  localStorage.setItem(KEY,JSON.stringify({date:today(),count:c}));
+  return c;
+}
+async function logSheet(res){
+  const n=new Date();
+  try{
+    await fetch(WEBHOOK,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({date:n.toLocaleDateString("sq-AL"),time:n.toLocaleTimeString("sq-AL"),
+      foods:res.items.map(i=>i.name).join(", "),calories:res.total.calories,
+      protein:res.total.protein,carbs:res.total.carbs,fat:res.total.fat,
+      fiber:res.total.fiber,sugar:res.total.sugar})});
+  }catch{}
+}
+async function analyzeImage(b64,mime){
+  const r=await fetch("/api/analyze",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({image:b64,mimeType:mime})
+  });
+  const d=await r.json();
+  if(d.error)throw new Error(d.error);
+  return d;
+}
+
+let state="home",imgFile=null,result=null,errMsg=null;
+
+function render(){
+  const left=MAX-getCount();
+  const app=document.getElementById("app");
+  let html=`
+  <div style="background:${PINE};padding:20px 24px 16px;text-align:center;">
+    <div style="color:${ALOE};font-size:11px;letter-spacing:3px;font-weight:700;margin-bottom:4px;">SOHEALTHY</div>
+    <div style="color:${ALABASTER};font-size:20px;font-weight:700;letter-spacing:-0.3px;">Skano Pjatën</div>
+    <div style="color:${ALOE};font-size:12px;margin-top:4px;font-family:'Open Sans',sans-serif;">Analiza e kalorive & makrove</div>
+  </div>
+  <div style="padding:24px;">`;
+
+  if(state==="home"){
+    html+=`
+    <div style="background:white;border-radius:16px;padding:32px 24px;text-align:center;border:1px solid rgba(27,63,47,0.1);margin-bottom:16px;">
+      <div style="font-size:48px;margin-bottom:16px;">🍽️</div>
+      <p style="color:${PINE};font-size:14px;line-height:1.6;margin:0 0 24px;font-family:'Open Sans',sans-serif;">Fotografo pjatën tënde dhe merr analizën e plotë të kalorive dhe makrove në sekonda.</p>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <button onclick="document.getElementById('cam').click()" style="background:${PINE};color:${ALABASTER};border:none;padding:14px 20px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;">📷 Bëj Foto</button>
+        <button onclick="document.getElementById('gal').click()" style="background:transparent;color:${PINE};border:1.5px solid ${PINE};padding:14px 20px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;">🖼️ Ngarko nga Galeria</button>
+      </div>
+    </div>
+    <div style="text-align:center;color:#888;font-size:12px;font-family:'Open Sans',sans-serif;">${left} skane të mbetura sot</div>`;
+  }
+
+  else if(state==="ready"){
+    html+=`
+    <div style="background:white;border-radius:16px;padding:24px;text-align:center;border:1px solid rgba(27,63,47,0.1);margin-bottom:16px;">
+      <div style="width:64px;height:64px;background:${ALOE}30;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;">✅</div>
+      <p style="color:${PINE};font-weight:700;font-size:15px;margin:0 0 4px;">Foto e ngarkuar</p>
+      <p style="color:#888;font-size:13px;margin:0 0 20px;font-family:'Open Sans',sans-serif;">${imgFile?.name||"Imazhi juaj"}</p>
+      ${errMsg?`<p style="color:${GOJI};font-size:13px;margin-bottom:16px;">${errMsg}</p>`:""}
+      <button onclick="doScan()" style="background:${GOJI};color:white;border:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;width:100%;">Analizo Pjatën →</button>
+    </div>
+    <button onclick="goHome()" style="background:transparent;color:#888;border:none;font-size:13px;cursor:pointer;width:100%;padding:8px;">← Provo foto tjetër</button>`;
+  }
+
+  else if(state==="loading"){
+    html+=`
+    <div style="text-align:center;padding:60px 24px;">
+      <div style="font-size:48px;margin-bottom:20px;">🔍</div>
+      <p style="color:${PINE};font-weight:700;font-size:16px;margin:0 0 8px;">Duke analizuar...</p>
+      <p style="color:#888;font-size:13px;font-family:'Open Sans',sans-serif;">AI po identifikon ushqimet dhe llogarit makrot</p>
+    </div>`;
+  }
+
+  else if(state==="result"&&result){
+    const t=result.total;
+    const macros=[["Proteina",t.protein],["Karbohidrate",t.carbs],["Yndyrna",t.fat],["Fibra",t.fiber],["Sheqeri",t.sugar]];
+    html+=`
+    <div style="background:${PINE};border-radius:16px;padding:20px;margin-bottom:16px;color:white;">
+      <div style="font-size:11px;letter-spacing:2px;color:${ALOE};margin-bottom:12px;font-weight:700;">TOTALI</div>
+      <div style="font-size:40px;font-weight:700;margin-bottom:4px;">${t.calories} <span style="font-size:18px;font-weight:400;">kcal</span></div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px;">
+        ${macros.map(([l,v])=>`<div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;"><div style="font-size:11px;color:${ALOE};margin-bottom:2px;">${l}</div><div style="font-size:18px;font-weight:600;">${v}<span style="font-size:12px;font-weight:400;">g</span></div></div>`).join("")}
+      </div>
+    </div>
+    <div style="font-size:11px;letter-spacing:2px;color:#888;font-weight:700;margin-bottom:10px;">USHQIMET E DETEKTUARA</div>
+    ${result.items.map(item=>`
+    <div style="background:white;border-radius:12px;padding:14px 16px;margin-bottom:10px;border:1px solid rgba(27,63,47,0.08);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+        <div><div style="color:${PINE};font-weight:700;font-size:14px;">${item.name}</div><div style="color:#888;font-size:12px;font-family:'Open Sans',sans-serif;">${item.portion}</div></div>
+        <div style="background:${PINE}20;color:${PINE};padding:4px 10px;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap;">${item.calories} kcal</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${[["P",item.protein],["K",item.carbs],["Y",item.fat],["F",item.fiber],["Sh",item.sugar]].map(([l,v])=>`<span style="font-size:11px;background:${ALABASTER};border-radius:4px;padding:3px 8px;color:${PINE};">${l}: ${v}g</span>`).join("")}
+      </div>
+    </div>`).join("")}
+    <button onclick="goHome()" style="background:${PINE};color:${ALABASTER};border:none;padding:14px 20px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;width:100%;margin-top:8px;">+ Skano Pjatë Tjetër</button>
+    <div style="text-align:center;color:#888;font-size:12px;margin-top:12px;font-family:'Open Sans',sans-serif;">${MAX-getCount()} skane të mbetura sot</div>`;
+  }
+
+  else if(state==="limit"){
+    html+=`
+    <div style="background:white;border-radius:16px;padding:32px 24px;text-align:center;border:1px solid rgba(183,73,73,0.2);">
+      <div style="font-size:40px;margin-bottom:16px;">⏰</div>
+      <p style="color:${PINE};font-weight:700;font-size:16px;margin:0 0 8px;">Limit ditor i arritur</p>
+      <p style="color:#888;font-size:13px;font-family:'Open Sans',sans-serif;line-height:1.6;">Keni përdorur të gjitha 10 skanet e sotme.<br>Kthehuni nesër!</p>
+    </div>`;
+  }
+
+  html+=`</div>
+  <div style="text-align:center;padding:16px;color:#aaa;font-size:11px;font-family:'Open Sans',sans-serif;">Powered by SoHealthy · Jo magji. Biologji.</div>
+  <input id="cam" type="file" accept="image/*" capture="environment" style="display:none">
+  <input id="gal" type="file" accept="image/*" style="display:none">`;
+
+  app.innerHTML=html;
+  document.getElementById("cam")?.addEventListener("change",e=>handleFile(e.target.files[0]));
+  document.getElementById("gal")?.addEventListener("change",e=>handleFile(e.target.files[0]));
+}
+
+function handleFile(f){if(!f)return;imgFile=f;state="ready";errMsg=null;render();}
+function goHome(){state="home";imgFile=null;result=null;errMsg=null;render();}
+async function doScan(){
+  if(getCount()>=MAX){state="limit";render();return;}
+  state="loading";render();
+  try{
+    const b64=await new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>res(r.result.split(",")[1]);
+      r.onerror=()=>rej();
+      r.readAsDataURL(imgFile);
+    });
+    result=await analyzeImage(b64,imgFile.type||"image/jpeg");
+    bump();await logSheet(result);state="result";
+  }catch(e){
+    errMsg="Gabim gjatë analizës. Provo përsëri.";
+    state="ready";
+  }
+  render();
+}
+
+window.doScan=doScan;window.goHome=goHome;
+render();
+</script>
+</body>
+</html>
